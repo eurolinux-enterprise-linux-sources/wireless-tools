@@ -8,11 +8,12 @@ Group: System Environment/Base
 License: GPL+
 Name: wireless-tools
 Version: 29
-Release: 5.1%{?pre_version}.1%{?dist}
+Release: 6%{?pre_version}%{?dist}
 Epoch: 1
 URL: http://www.hpl.hp.com/personal/Jean_Tourrilhes/Linux/Tools.html
 Source: http://www.hpl.hp.com/personal/Jean_Tourrilhes/Linux/wireless_tools.%{version}%{?pre_version}.tar.gz
 Patch1: wireless-tools-29-makefile.patch
+Patch2: rh857920-allocation-failure.patch
 BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-root
 
 # This is artificial, for packaging purposes.  The presumption is that
@@ -46,6 +47,7 @@ fi
 
 %setup -q -n wireless_tools.%{version}
 %patch1 -p1 -b .makefile
+%patch2 -p1 -b .rh857920-allocation-failure.orig
 
 %build
 make clean
@@ -84,6 +86,9 @@ ln -sf ../../%{_lib}/libiw.so.%{version} \
 
 
 %changelog
+* Fri Feb 27 2015 Thomas Haller <thaller@redhat.com> - 1:29-6
+- fix allocation failure in iwlist scan (rh #857920)
+
 * Mon Nov 30 2009 Dennis Gregorovic <dgregor@redhat.com> - 1:29-5.1.1
 - Rebuilt for RHEL 6
 

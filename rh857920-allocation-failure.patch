@@ -1,0 +1,58 @@
+From 83a42faedd50c5bfcdeeb8528b8da0ea55c32068 Mon Sep 17 00:00:00 2001
+From: Thomas Haller <thaller@redhat.com>
+Date: Mon, 7 Jul 2014 20:50:08 +0200
+Subject: [PATCH 1/1] Fix allocation failure scanning for APs
+
+The length field of wext data (iw_point.data) is 16 bits. The largest
+value is thus 65535. During the attempts to increase buffer size the
+buffer starts at 4096 and is doubled after each failure to fill. From the
+time this length reaches 65536 it is effectively zero. We thus loose all
+potential space from 32768 to 65535.
+
+This problem is clear when scanning in a RF dense environment.
+
+Without this patch:
+~$ iwlist wlan0 scan
+print_scanning_info: Allocation failed
+
+With this patch:
+~$ iwlist wlan0 scan | grep Cell | wc -l
+86
+
+https://mailman.archlinux.org/pipermail/arch-commits/2012-August/174852.html
+
+https://bugzilla.redhat.com/show_bug.cgi?id=857920
+
+Signed-off-by: Reinette Chatre <reinette.chatre at intel.com>
+Signed-off-by: Thomas Haller <thaller@redhat.com>
+---
+ iwlist.c | 6 +++++-
+ 1 file changed, 5 insertions(+), 1 deletion(-)
+
+diff --git a/iwlist.c b/iwlist.c
+index 4a633a3..9b79326 100644
+--- a/iwlist.c
++++ b/iwlist.c
+@@ -799,7 +799,7 @@ print_scanning_info(int		skfd,
+ 	  if(iw_get_ext(skfd, ifname, SIOCGIWSCAN, &wrq) < 0)
+ 	    {
+ 	      /* Check if buffer was too small (WE-17 only) */
+-	      if((errno == E2BIG) && (range.we_version_compiled > 16))
++	      if((errno == E2BIG) && (range.we_version_compiled > 16) && (buflen < 65535))
+ 		{
+ 		  /* Some driver may return very large scan results, either
+ 		   * because there are many cells, or because they have many
+@@ -815,6 +815,10 @@ print_scanning_info(int		skfd,
+ 		  else
+ 		    buflen *= 2;
+ 
++		  /* wrq.u.data.length is 16 bits so max size is 65535 */
++		  if(buflen > 65535)
++		    buflen = 65535;
++
+ 		  /* Try again */
+ 		  goto realloc;
+ 		}
+-- 
+1.9.3
+
